@@ -4,6 +4,42 @@ A native, read-only Markdown viewer for macOS. It opens `.md`, `.markdown` and `
 files and renders them GitHub-style (tables, task lists, strikethrough, syntax-highlighted
 code, light/dark mode) in a `WKWebView`. There is no editor.
 
+## Install
+
+MdViewer is not on the Mac App Store and is not notarized by Apple, so macOS will warn
+you the first time you open it. Requires macOS 15 or later (Apple silicon or Intel).
+
+1. Download `MdViewer-<version>.zip` from the
+   [latest release](https://github.com/unaivv/mdViewer/releases/latest).
+2. Unzip it and drag `MdViewer.app` into `/Applications`.
+3. Allow it to run, either:
+   - **Terminal (quickest):**
+
+     ```sh
+     xattr -dr com.apple.quarantine /Applications/MdViewer.app
+     ```
+
+   - **System Settings:** open the app once (macOS blocks it), then go to
+     System Settings > Privacy & Security, scroll to *"MdViewer" was blocked…* and click
+     **Open Anyway**.
+4. Open the app once so the Quick Look extension registers; then press Space on any
+   `.md` file in Finder to preview it.
+
+To open `.md` files with MdViewer by default: select a file in Finder, File > Get Info >
+*Open with:* MdViewer > **Change All…**
+
+### Install from source
+
+```sh
+brew install xcodegen
+git clone https://github.com/unaivv/mdViewer.git && cd mdViewer
+./scripts/package.sh --install
+```
+
+This builds a Release app, zips it into `build/`, and copies it to `/Applications`.
+Building from source needs Xcode 27; without the author's signing certificate, see the
+Signing note below.
+
 ## Features
 
 - GitHub-flavored rendering: tables, task lists, strikethrough, raw HTML, heading anchors
@@ -105,7 +141,16 @@ Open `Samples/sample.md` with the built app to see every feature.
 
 ## Distribution
 
-`scripts/release.sh` archives a Release build, exports it with Developer ID, notarizes
+Without a Developer ID certificate, `./scripts/package.sh` produces
+`build/MdViewer-<version>.zip` (universal, development-signed, not notarized). Attach it to
+a GitHub release:
+
+```sh
+./scripts/package.sh
+gh release create v0.1.0 build/MdViewer-0.1.0.zip --title "MdViewer 0.1.0" --generate-notes
+```
+
+With a Developer ID certificate, `scripts/release.sh` archives a Release build, exports it with Developer ID, notarizes
 and staples it, and writes `build/MdViewer-<version>.zip` and `build/MdViewer-<version>.dmg`
 (the dmg is signed, notarized and stapled too).
 
