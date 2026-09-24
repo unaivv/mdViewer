@@ -1,0 +1,67 @@
+name: MdViewer
+options:
+  bundleIdPrefix: com.unaividal
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+packages:
+  swift-markdown:
+    url: https://github.com/swiftlang/swift-markdown
+    from: 0.9.0
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+targets:
+  MdViewer:
+    type: application
+    platform: macOS
+    sources:
+      - path: MdViewer
+        excludes:
+          - Resources/Info.plist
+    dependencies:
+      - package: swift-markdown
+        product: Markdown
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.unaividal.MdViewer
+        PRODUCT_NAME: MdViewer
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: MdViewer/Resources/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: MdViewer
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Phase 1: App Sandbox disabled so WebKit can read images next to the document.
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+  MdViewerTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: MdViewerTests
+    dependencies:
+      - target: MdViewer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.unaividal.MdViewerTests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  MdViewer:
+    build:
+      targets:
+        MdViewer: all
+        MdViewerTests: [test]
+    test:
+      targets:
+        - MdViewerTests
