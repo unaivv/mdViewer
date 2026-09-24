@@ -4,6 +4,17 @@ A native, read-only Markdown viewer for macOS. It opens `.md`, `.markdown` and `
 files and renders them GitHub-style (tables, task lists, strikethrough, syntax-highlighted
 code, light/dark mode) in a `WKWebView`. There is no editor.
 
+## Features
+
+- GitHub-flavored rendering: tables, task lists, strikethrough, raw HTML, heading anchors
+- Syntax highlighting with bundled highlight.js (light and dark themes, offline)
+- Outline sidebar: headings indented by level; click to scroll, current heading highlighted
+  while scrolling; toggle with the toolbar button or ⌃⌘S
+- Live reload: the view refreshes when the file changes on disk (including atomic saves
+  from vim, VS Code, etc.) and keeps the scroll position
+- Find in page: ⌘F opens the find bar, ⌘G / ⇧⌘G for next/previous, Esc closes it
+- Relative images resolve next to the document; external links open in the default browser
+
 ## Stack
 
 - SwiftUI `DocumentGroup(viewing:)` with a read-only `FileDocument`
@@ -17,11 +28,12 @@ code, light/dark mode) in a `WKWebView`. There is no editor.
 ```
 MdViewer/
   App/          Composition root
-  Domain/       MarkdownDocument, Heading, RenderedDocument, Slugifier
-  Application/  RenderDocument use case
-  Ports/        MarkdownRenderer protocol
-  Adapters/     SwiftMarkdownRenderer, HTMLPageTemplate, MarkdownFile (FileDocument)
-  UI/           Containers, Presentational views, MarkdownWebView
+  Domain/       MarkdownDocument, Heading, RenderedDocument, Slugifier, TableOfContents
+  Application/  RenderDocument and WatchDocument use cases
+  Ports/        MarkdownRenderer, FileWatcher, DocumentReader protocols
+  Adapters/     SwiftMarkdownRenderer, HTMLPageTemplate, MarkdownFile (FileDocument),
+                DispatchSourceFileWatcher, FileSystemDocumentReader
+  UI/           Containers, Presentational views, Commands, MarkdownWebView
   Resources/    Info.plist, assets, web assets (CSS, highlight.js)
 MdViewerTests/  Swift Testing tests
 Samples/        sample.md exercising every feature

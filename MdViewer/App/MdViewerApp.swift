@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// Composition root: wires adapters into the use case and the UI.
+/// Composition root: wires adapters into the use cases and the UI.
 @main
 struct MdViewerApp: App {
     private let renderDocument = RenderDocument(renderer: SwiftMarkdownRenderer())
+    private let watchDocument = WatchDocument(
+        watcher: DispatchSourceFileWatcher(),
+        reader: FileSystemDocumentReader()
+    )
     private let template = HTMLPageTemplate(assets: .bundled())
 
     var body: some Scene {
@@ -15,8 +19,13 @@ struct MdViewerApp: App {
                 ),
                 fileURL: configuration.fileURL,
                 renderDocument: renderDocument,
+                watchDocument: watchDocument,
                 template: template
             )
+        }
+        .commands {
+            SidebarCommands()
+            FindCommands()
         }
     }
 }

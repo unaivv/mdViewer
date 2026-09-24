@@ -67,7 +67,11 @@ public struct HTMLPageTemplate: Sendable {
         """
     }
 
-    /// Highlights code blocks and makes `#anchor` links scroll within the page.
+    /// Name of the `WKScriptMessageHandler` that receives the active heading's id.
+    public static let activeHeadingMessageName = "activeHeading"
+
+    /// Highlights code blocks, makes `#anchor` links scroll within the page and reports
+    /// the heading currently at the top of the viewport to the native side.
     private static let bootstrapScript = """
     (function () {
       if (window.hljs) {
@@ -85,6 +89,31 @@ public struct HTMLPageTemplate: Sendable {
           target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       });
+
+      var handlers = window.webkit && window.webkit.messageHandlers;
+      var handler = handlers && handlers.\(activeHeadingMessageName);
+      if (!handler) { return; }
+      var headings = Array.prototype.slice.call(
+        document.querySelectorAll('.markdown-body :is(h1, h2, h3, h4, h5, h6)[id]'));
+      var lastReported = null;
+      function reportActiveHeading() {
+        var active = headings.length ? headings[0].id : '';
+        for (var i = 0; i < headings.length; i++) {
+          if (headings[i].getBoundingClientRect().top <= 80) { active = headings[i].id; } else { break; }
+        }
+        if (active !== lastReported) {
+          lastReported = active;
+          handler.postMessage(active);
+        }
+      }
+      var scheduled = false;
+      window.addEventListener('scroll', function () {
+        if (scheduled) { return; }
+        scheduled = true;
+        window.requestAnimationFrame(function () { scheduled = false; reportActiveHeading(); });
+      }, { passive: true });
+      window.addEventListener('resize', reportActiveHeading);
+      reportActiveHeading();
     })();
     """
 }

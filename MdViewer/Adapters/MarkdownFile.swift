@@ -21,9 +21,7 @@ struct MarkdownFile: FileDocument {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        self.text = String(data: data, encoding: .utf8)
-            ?? String(data: data, encoding: .isoLatin1)
-            ?? ""
+        self.text = MarkdownTextDecoding.decode(data)
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
