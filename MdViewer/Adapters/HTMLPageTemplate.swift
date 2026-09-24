@@ -1,50 +1,37 @@
 import Foundation
 
-/// Adapter: wraps a rendered HTML fragment into a full, self-contained HTML page.
+/// Adapter: wraps a rendered HTML fragment into a full HTML page.
 ///
-/// All CSS and JavaScript are inlined so the page works with any `baseURL`
-/// (the document's folder) and never touches the network.
+/// Stylesheets, scripts and fonts are served from the app bundle through the
+/// `mdviewer-resource://` scheme (see `WebResourceLocator`), so the page never touches
+/// the network and heavy libraries (KaTeX, Mermaid) are only referenced when the
+/// document actually uses them.
 public struct HTMLPageTemplate: Sendable {
-    public struct Assets: Sendable, Equatable {
-        public let stylesheet: String
-        public let highlightScript: String
-        public let highlightLightTheme: String
-        public let highlightDarkTheme: String
+    /// Name of the `WKScriptMessageHandler` that receives the active heading's id
+    /// (must match `viewer.js`).
+    public static let activeHeadingMessageName = "activeHeading"
 
-        public init(stylesheet: String, highlightScript: String, highlightLightTheme: String, highlightDarkTheme: String) {
-            self.stylesheet = stylesheet
-            self.highlightScript = highlightScript
-            self.highlightLightTheme = highlightLightTheme
-            self.highlightDarkTheme = highlightDarkTheme
+    public init() {}
+
+    public func page(title: String, body: String, features: DocumentFeatures) -> String {
+        var head: [String] = [
+            stylesheet("themes.css"),
+            stylesheet("markdown.css"),
+            stylesheet("highlight/github.min.css", media: "print, (prefers-color-scheme: light)"),
+            stylesheet("highlight/github-dark.min.css", media: "screen and (prefers-color-scheme: dark)"),
+        ]
+        var scripts: [String] = [script("highlight/highlight.min.js")]
+
+        if features.containsMath {
+            head.append(stylesheet("katex/katex.min.css"))
+            scripts.append(script("katex/katex.min.js"))
         }
-
-        /// Loads the bundled web assets from `Resources/Web`.
-        public static func bundled(in bundle: Bundle = .main) -> Assets {
-            func load(_ name: String, _ ext: String) -> String {
-                guard let url = bundle.url(forResource: name, withExtension: ext),
-                      let contents = try? String(contentsOf: url, encoding: .utf8) else {
-                    assertionFailure("Missing bundled resource \(name).\(ext)")
-                    return ""
-                }
-                return contents
-            }
-            return Assets(
-                stylesheet: load("markdown", "css"),
-                highlightScript: load("highlight.min", "js"),
-                highlightLightTheme: load("github.min", "css"),
-                highlightDarkTheme: load("github-dark.min", "css")
-            )
+        if features.containsMermaid {
+            scripts.append(script("mermaid/mermaid.min.js"))
         }
-    }
+        scripts.append(script("viewer.js"))
 
-    private let assets: Assets
-
-    public init(assets: Assets) {
-        self.assets = assets
-    }
-
-    public func page(title: String, body: String) -> String {
-        """
+        return """
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -52,68 +39,24 @@ public struct HTMLPageTemplate: Sendable {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="color-scheme" content="light dark">
         <title>\(HTMLEscaping.text(title))</title>
-        <style>\(assets.stylesheet)</style>
-        <style media="(prefers-color-scheme: light)">\(assets.highlightLightTheme)</style>
-        <style media="(prefers-color-scheme: dark)">\(assets.highlightDarkTheme)</style>
+        \(head.joined(separator: "\n"))
         </head>
         <body>
         <article class="markdown-body">
         \(body)
         </article>
-        <script>\(assets.highlightScript)</script>
-        <script>\(Self.bootstrapScript)</script>
+        \(scripts.joined(separator: "\n"))
         </body>
         </html>
         """
     }
 
-    /// Name of the `WKScriptMessageHandler` that receives the active heading's id.
-    public static let activeHeadingMessageName = "activeHeading"
+    private func stylesheet(_ path: String, media: String? = nil) -> String {
+        let mediaAttribute = media.map { " media=\"\(HTMLEscaping.attribute($0))\"" } ?? ""
+        return "<link rel=\"stylesheet\" href=\"\(WebResourceLocator.url(for: path))\"\(mediaAttribute)>"
+    }
 
-    /// Highlights code blocks, makes `#anchor` links scroll within the page and reports
-    /// the heading currently at the top of the viewport to the native side.
-    private static let bootstrapScript = """
-    (function () {
-      if (window.hljs) {
-        document.querySelectorAll('pre code').forEach(function (block) {
-          window.hljs.highlightElement(block);
-        });
-      }
-      document.addEventListener('click', function (event) {
-        var link = event.target.closest('a[href^="#"]');
-        if (!link) { return; }
-        var id = decodeURIComponent(link.getAttribute('href').slice(1));
-        var target = document.getElementById(id);
-        if (target) {
-          event.preventDefault();
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
-
-      var handlers = window.webkit && window.webkit.messageHandlers;
-      var handler = handlers && handlers.\(activeHeadingMessageName);
-      if (!handler) { return; }
-      var headings = Array.prototype.slice.call(
-        document.querySelectorAll('.markdown-body :is(h1, h2, h3, h4, h5, h6)[id]'));
-      var lastReported = null;
-      function reportActiveHeading() {
-        var active = headings.length ? headings[0].id : '';
-        for (var i = 0; i < headings.length; i++) {
-          if (headings[i].getBoundingClientRect().top <= 80) { active = headings[i].id; } else { break; }
-        }
-        if (active !== lastReported) {
-          lastReported = active;
-          handler.postMessage(active);
-        }
-      }
-      var scheduled = false;
-      window.addEventListener('scroll', function () {
-        if (scheduled) { return; }
-        scheduled = true;
-        window.requestAnimationFrame(function () { scheduled = false; reportActiveHeading(); });
-      }, { passive: true });
-      window.addEventListener('resize', reportActiveHeading);
-      reportActiveHeading();
-    })();
-    """
+    private func script(_ path: String) -> String {
+        "<script src=\"\(WebResourceLocator.url(for: path))\"></script>"
+    }
 }

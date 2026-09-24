@@ -8,7 +8,7 @@ struct MdViewerApp: App {
         watcher: DispatchSourceFileWatcher(),
         reader: FileSystemDocumentReader()
     )
-    private let template = HTMLPageTemplate(assets: .bundled())
+    private let template = HTMLPageTemplate()
 
     var body: some Scene {
         DocumentGroup(viewing: MarkdownFile.self) { configuration in
@@ -26,6 +26,8 @@ struct MdViewerApp: App {
         .commands {
             SidebarCommands()
             FindCommands()
+            FileCommands()
+            ViewCommands()
         }
     }
 }

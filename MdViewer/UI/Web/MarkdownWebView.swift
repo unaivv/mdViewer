@@ -11,15 +11,22 @@ final class MarkdownWebViewProxy {
     /// Smoothly scrolls the page so the element with `id == slug` is at the top.
     func scrollToHeading(slug: String) {
         webView?.callAsyncJavaScript(
-            """
-            var target = document.getElementById(slug);
-            if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-            """,
+            "window.mdViewer && window.mdViewer.scrollToHeading(slug);",
             arguments: ["slug": slug],
             in: nil,
             in: .page,
             completionHandler: nil
         )
+    }
+
+    func printDocument() async {
+        guard let webView else { return }
+        await WebPrinting.print(webView)
+    }
+
+    func exportPDF(suggestedName: String) async {
+        guard let webView else { return }
+        await WebPrinting.exportPDFWithSavePanel(webView, suggestedName: suggestedName)
     }
 
     /// Finds and selects the next (or previous) match, wrapping around. Returns whether a match exists.
@@ -39,9 +46,12 @@ final class MarkdownWebViewProxy {
 /// - External links open in the default browser; `#anchor` links scroll in-page.
 /// - Reloading different HTML for the same base URL preserves the scroll position.
 /// - The heading at the top of the viewport is reported through `onActiveHeadingChange`.
+/// - Theme and zoom changes apply live, without reloading (so the scroll position stays).
 struct MarkdownWebView: NSViewRepresentable {
     let html: String
     let baseURL: URL?
+    let theme: ReaderTheme
+    let zoom: Double
     let proxy: MarkdownWebViewProxy
     let onActiveHeadingChange: (String) -> Void
 
@@ -52,6 +62,10 @@ struct MarkdownWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
+        configuration.preferences.shouldPrintBackgrounds = true
+        configuration.setURLSchemeHandler(BundleResourceSchemeHandler(), forURLScheme: WebResourceLocator.scheme)
+        Self.installSettingsScript(for: theme, in: configuration.userContentController)
+        context.coordinator.appliedTheme = theme
         configuration.userContentController.add(
             context.coordinator,
             name: HTMLPageTemplate.activeHeadingMessageName
@@ -59,6 +73,7 @@ struct MarkdownWebView: NSViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.allowsMagnification = true
+        webView.pageZoom = zoom
         return webView
     }
 
@@ -66,6 +81,16 @@ struct MarkdownWebView: NSViewRepresentable {
         let coordinator = context.coordinator
         coordinator.onActiveHeadingChange = onActiveHeadingChange
         proxy.webView = webView
+
+        if webView.pageZoom != zoom {
+            webView.pageZoom = zoom
+        }
+        if coordinator.appliedTheme != theme {
+            coordinator.appliedTheme = theme
+            // Future loads (live reload) start with the new theme; the current page switches live.
+            Self.installSettingsScript(for: theme, in: webView.configuration.userContentController)
+            webView.evaluateJavaScript(PageSettingsScript.liveUpdateSource(for: theme), completionHandler: nil)
+        }
 
         guard coordinator.loadedHTML != html || coordinator.loadedBaseURL != baseURL else { return }
         let isReload = coordinator.loadedHTML != nil && coordinator.loadedBaseURL == baseURL
@@ -85,6 +110,15 @@ struct MarkdownWebView: NSViewRepresentable {
         }
     }
 
+    private static func installSettingsScript(for theme: ReaderTheme, in controller: WKUserContentController) {
+        controller.removeAllUserScripts()
+        controller.addUserScript(WKUserScript(
+            source: PageSettingsScript.documentStartSource(for: theme),
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        ))
+    }
+
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(
             forName: HTMLPageTemplate.activeHeadingMessageName
@@ -96,6 +130,7 @@ struct MarkdownWebView: NSViewRepresentable {
         var loadedHTML: String?
         var loadedBaseURL: URL?
         var pendingScrollY: Double?
+        var appliedTheme: ReaderTheme?
         var onActiveHeadingChange: ((String) -> Void)?
 
         // MARK: WKScriptMessageHandler
@@ -112,6 +147,9 @@ struct MarkdownWebView: NSViewRepresentable {
         // MARK: WKNavigationDelegate
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            #if DEBUG
+            DebugAutomation.pageDidFinishLoading(webView)
+            #endif
             guard let scrollY = pendingScrollY else { return }
             pendingScrollY = nil
             webView.evaluateJavaScript("window.scrollTo(0, \(scrollY))", completionHandler: nil)

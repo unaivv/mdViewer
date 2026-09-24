@@ -4,6 +4,8 @@ import SwiftUI
 struct DocumentViewerView: View {
     let pageHTML: String?
     let baseURL: URL?
+    let theme: ReaderTheme
+    let zoom: Double
     let outline: [OutlineEntry]
     let activeSlug: String?
     let webViewProxy: MarkdownWebViewProxy
@@ -38,6 +40,8 @@ struct DocumentViewerView: View {
                     MarkdownWebView(
                         html: pageHTML,
                         baseURL: baseURL,
+                        theme: theme,
+                        zoom: zoom,
                         proxy: webViewProxy,
                         onActiveHeadingChange: onActiveHeadingChange
                     )

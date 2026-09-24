@@ -4,16 +4,19 @@ import Markdown
 /// Adapter: renders Markdown to HTML using Apple's `swift-markdown` (cmark-gfm) parser.
 ///
 /// swift-markdown ships an `HTMLFormatter`, but it cannot emit heading `id` attributes,
-/// so we walk the AST ourselves with a `MarkupVisitor`.
+/// so we walk the AST ourselves with a `MarkupVisitor`. TeX math is protected from the
+/// parser by `MathPreprocessor` and emitted as `.math` elements for KaTeX; ```` ```mermaid ````
+/// blocks are emitted as `pre.mermaid` for Mermaid.
 public struct SwiftMarkdownRenderer: MarkdownRenderer {
     public init() {}
 
     public func render(_ markdown: String) -> RenderedDocument {
         // Smart punctuation is disabled to match GitHub rendering.
-        let document = Document(parsing: markdown, options: [.disableSmartOpts])
-        var visitor = HTMLVisitor()
+        let math = MathPreprocessor.process(markdown)
+        let document = Document(parsing: math.markdown, options: [.disableSmartOpts])
+        var visitor = HTMLVisitor(mathSpans: math.spans)
         visitor.visit(document)
-        return RenderedDocument(html: visitor.html, headings: visitor.headings)
+        return RenderedDocument(html: visitor.html, headings: visitor.headings, features: visitor.features)
     }
 }
 
@@ -24,11 +27,22 @@ private struct HTMLVisitor: MarkupVisitor {
 
     private(set) var html = ""
     private(set) var headings: [Heading] = []
+    private(set) var features = DocumentFeatures()
+    private let mathSpans: [MathPreprocessor.Span]
     private var slugifier = Slugifier()
     /// Whether paragraphs should be rendered without `<p>` (tight list items).
     private var isInTightListItem = false
 
+    init(mathSpans: [MathPreprocessor.Span]) {
+        self.mathSpans = mathSpans
+    }
+
     // MARK: Helpers
+
+    /// Original source for any text that must not contain math markup.
+    private func restored(_ string: String) -> String {
+        MathPreprocessor.restore(string, spans: mathSpans)
+    }
 
     private mutating func visitChildren(of markup: any Markup) {
         for child in markup.children {
@@ -53,7 +67,7 @@ private struct HTMLVisitor: MarkupVisitor {
     }
 
     mutating func visitHeading(_ heading: Markdown.Heading) {
-        let text = heading.plainText
+        let text = restored(heading.plainText)
         let slug = slugifier.uniqueSlug(for: text)
         headings.append(MdViewer.Heading(level: heading.level, text: text, slug: slug))
         let tag = "h\(heading.level)"
@@ -85,12 +99,23 @@ private struct HTMLVisitor: MarkupVisitor {
             .split(whereSeparator: { $0.isWhitespace })
             .first
             .map(String.init)
-        let classAttribute = language.map { " class=\"language-\(HTMLEscaping.attribute($0))\"" } ?? ""
-        html += "<pre><code\(classAttribute)>\(HTMLEscaping.text(codeBlock.code))</code></pre>\n"
+        let code = restored(codeBlock.code)
+        switch language?.lowercased() {
+        case "math":
+            features.containsMath = true
+            let tex = code.trimmingCharacters(in: .whitespacesAndNewlines)
+            html += "<div class=\"math math-display\">\(HTMLEscaping.text(tex))</div>\n"
+        case "mermaid":
+            features.containsMermaid = true
+            html += "<pre class=\"mermaid\">\(HTMLEscaping.text(code))</pre>\n"
+        default:
+            let classAttribute = language.map { " class=\"language-\(HTMLEscaping.attribute($0))\"" } ?? ""
+            html += "<pre><code\(classAttribute)>\(HTMLEscaping.text(code))</code></pre>\n"
+        }
     }
 
     mutating func visitHTMLBlock(_ html: HTMLBlock) {
-        self.html += html.rawHTML
+        self.html += restored(html.rawHTML)
     }
 
     mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) {
@@ -192,7 +217,19 @@ private struct HTMLVisitor: MarkupVisitor {
     // MARK: Inlines
 
     mutating func visitText(_ text: Text) {
-        html += HTMLEscaping.text(text.string)
+        for segment in MathPreprocessor.segments(of: text.string) {
+            switch segment {
+            case .text(let string):
+                html += HTMLEscaping.text(string)
+            case .math(let index) where index < mathSpans.count:
+                let span = mathSpans[index]
+                features.containsMath = true
+                let kind = span.isDisplay ? "math-display" : "math-inline"
+                html += "<span class=\"math \(kind)\">\(HTMLEscaping.text(span.tex))</span>"
+            case .math:
+                break
+            }
+        }
     }
 
     mutating func visitEmphasis(_ emphasis: Emphasis) {
@@ -208,28 +245,28 @@ private struct HTMLVisitor: MarkupVisitor {
     }
 
     mutating func visitInlineCode(_ inlineCode: InlineCode) {
-        html += "<code>\(HTMLEscaping.text(inlineCode.code))</code>"
+        html += "<code>\(HTMLEscaping.text(restored(inlineCode.code)))</code>"
     }
 
     mutating func visitLink(_ link: Link) {
-        var attributes = " href=\"\(HTMLEscaping.attribute(link.destination ?? ""))\""
+        var attributes = " href=\"\(HTMLEscaping.attribute(restored(link.destination ?? "")))\""
         if let title = link.title, !title.isEmpty {
-            attributes += " title=\"\(HTMLEscaping.attribute(title))\""
+            attributes += " title=\"\(HTMLEscaping.attribute(restored(title)))\""
         }
         wrap("a", link, attributes: attributes)
     }
 
     mutating func visitImage(_ image: Image) {
-        var attributes = " src=\"\(HTMLEscaping.attribute(image.source ?? ""))\""
-        attributes += " alt=\"\(HTMLEscaping.attribute(image.plainText))\""
+        var attributes = " src=\"\(HTMLEscaping.attribute(restored(image.source ?? "")))\""
+        attributes += " alt=\"\(HTMLEscaping.attribute(restored(image.plainText)))\""
         if let title = image.title, !title.isEmpty {
-            attributes += " title=\"\(HTMLEscaping.attribute(title))\""
+            attributes += " title=\"\(HTMLEscaping.attribute(restored(title)))\""
         }
         html += "<img\(attributes) />"
     }
 
     mutating func visitInlineHTML(_ inlineHTML: InlineHTML) {
-        html += inlineHTML.rawHTML
+        html += restored(inlineHTML.rawHTML)
     }
 
     mutating func visitSoftBreak(_ softBreak: SoftBreak) {
@@ -241,6 +278,6 @@ private struct HTMLVisitor: MarkupVisitor {
     }
 
     mutating func visitSymbolLink(_ symbolLink: SymbolLink) {
-        html += "<code>\(HTMLEscaping.text(symbolLink.destination ?? ""))</code>"
+        html += "<code>\(HTMLEscaping.text(restored(symbolLink.destination ?? "")))</code>"
     }
 }

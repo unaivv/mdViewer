@@ -46,21 +46,3 @@ struct SlugifierTests {
         #expect(slugifier.uniqueSlug(for: "A-1") == "a-1-1")
     }
 }
-
-@Suite("HTMLPageTemplate")
-struct HTMLPageTemplateTests {
-    @Test func embedsBodyAssetsAndEscapedTitle() {
-        let template = HTMLPageTemplate(assets: .init(
-            stylesheet: "/*css*/", highlightScript: "/*js*/",
-            highlightLightTheme: "/*light*/", highlightDarkTheme: "/*dark*/"
-        ))
-
-        let page = template.page(title: "a<b>.md", body: "<p>x</p>")
-
-        #expect(page.contains("<title>a&lt;b&gt;.md</title>"))
-        #expect(page.contains("<p>x</p>"))
-        #expect(page.contains("<style>/*css*/</style>"))
-        #expect(page.contains(#"<style media="(prefers-color-scheme: dark)">/*dark*/</style>"#))
-        #expect(page.contains("<script>/*js*/</script>"))
-    }
-}

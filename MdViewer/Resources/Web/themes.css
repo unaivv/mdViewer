@@ -1,0 +1,115 @@
+/*
+ * Reading themes. The active theme is set on <html data-theme="...">; every theme
+ * has light and dark variants driven by prefers-color-scheme.
+ */
+
+/* GitHub (default) */
+:root, :root[data-theme="github"] {
+  --fg: #1f2328;
+  --fg-muted: #59636e;
+  --bg: #ffffff;
+  --bg-subtle: #f6f8fa;
+  --border: #d1d9e0;
+  --border-muted: #d1d9e0b3;
+  --link: #0969da;
+  --code-bg: #818b981f;
+  --font-body: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-heading: var(--font-body);
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --font-size: 16px;
+  --line-height: 1.6;
+}
+@media (prefers-color-scheme: dark) {
+  :root, :root[data-theme="github"] {
+    --fg: #f0f6fc;
+    --fg-muted: #9198a1;
+    --bg: #0d1117;
+    --bg-subtle: #151b23;
+    --border: #3d444d;
+    --border-muted: #3d444db3;
+    --link: #4493f8;
+    --code-bg: #656c7633;
+  }
+}
+
+/* Sepia: warm paper tones, bookish serif body */
+:root[data-theme="sepia"] {
+  --fg: #433422;
+  --fg-muted: #7a6650;
+  --bg: #f4ecd8;
+  --bg-subtle: #ebe0c6;
+  --border: #d6c7a6;
+  --border-muted: #d6c7a6b3;
+  --link: #9a4f16;
+  --code-bg: #e2d5b6;
+  --font-body: "Iowan Old Style", "Palatino", Georgia, serif;
+  --font-heading: var(--font-body);
+  --font-size: 17px;
+  --line-height: 1.65;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="sepia"] {
+    --fg: #e6d8bd;
+    --fg-muted: #b3a283;
+    --bg: #28231c;
+    --bg-subtle: #332c23;
+    --border: #4d4435;
+    --border-muted: #4d4435b3;
+    --link: #e0a060;
+    --code-bg: #3b3328;
+  }
+}
+
+/* Academic: serif typography, narrower measure feel, restrained colors */
+:root[data-theme="academic"] {
+  --fg: #1a1a1a;
+  --fg-muted: #555555;
+  --bg: #fdfdfb;
+  --bg-subtle: #f3f3ef;
+  --border: #d4d4cc;
+  --border-muted: #d4d4ccb3;
+  --link: #1f4e8c;
+  --code-bg: #ecece6;
+  --font-body: "New York", "Charter", "Iowan Old Style", Georgia, serif;
+  --font-heading: "New York", "Charter", Georgia, serif;
+  --font-size: 18px;
+  --line-height: 1.7;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="academic"] {
+    --fg: #e8e6e1;
+    --fg-muted: #a5a29a;
+    --bg: #1c1c1e;
+    --bg-subtle: #252527;
+    --border: #3f3f42;
+    --border-muted: #3f3f42b3;
+    --link: #8fb4e8;
+    --code-bg: #2c2c2f;
+  }
+}
+
+/* High contrast: maximum legibility */
+:root[data-theme="highContrast"] {
+  --fg: #000000;
+  --fg-muted: #1a1a1a;
+  --bg: #ffffff;
+  --bg-subtle: #f0f0f0;
+  --border: #000000;
+  --border-muted: #000000;
+  --link: #0000c8;
+  --code-bg: #e6e6e6;
+  --font-size: 17px;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="highContrast"] {
+    --fg: #ffffff;
+    --fg-muted: #f0f0f0;
+    --bg: #000000;
+    --bg-subtle: #121212;
+    --border: #ffffff;
+    --border-muted: #ffffff;
+    --link: #7cc4ff;
+    --code-bg: #1f1f1f;
+  }
+}
+:root[data-theme="highContrast"] .markdown-body a { text-decoration: underline; }

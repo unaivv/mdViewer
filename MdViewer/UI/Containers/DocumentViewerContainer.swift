@@ -10,6 +10,9 @@ struct DocumentViewerContainer: View {
     let template: HTMLPageTemplate
 
     /// The latest version read from disk, overriding `document` after an external change.
+    @AppStorage(AppSettings.readerThemeKey) private var theme = ReaderTheme.default
+    @AppStorage(AppSettings.pageZoomKey) private var zoom = PageZoom.actualSize
+
     @State private var liveDocument: MarkdownDocument?
     @State private var page: RenderedPage?
     @State private var activeSlug: String?
@@ -26,6 +29,8 @@ struct DocumentViewerContainer: View {
         DocumentViewerView(
             pageHTML: page?.html,
             baseURL: fileURL?.deletingLastPathComponent(),
+            theme: theme,
+            zoom: PageZoom.clamped(zoom),
             outline: page?.outline ?? [],
             activeSlug: activeSlug,
             webViewProxy: webViewProxy,
@@ -49,6 +54,15 @@ struct DocumentViewerContainer: View {
             findNext: { isFindBarVisible ? find(backwards: false) : showFindBar() },
             findPrevious: { isFindBarVisible ? find(backwards: true) : showFindBar() }
         ))
+        .focusedSceneValue(\.documentOutputActions, DocumentOutputActions(
+            exportPDF: { Task { await webViewProxy.exportPDF(suggestedName: pdfName) } },
+            print: { Task { await webViewProxy.printDocument() } }
+        ))
+    }
+
+    private var pdfName: String {
+        let base = fileURL?.deletingPathExtension().lastPathComponent ?? "Untitled"
+        return "\(base).pdf"
     }
 
     // MARK: Rendering and live reload
@@ -59,7 +73,7 @@ struct DocumentViewerContainer: View {
         page = await Task.detached(priority: .userInitiated) {
             let rendered = renderDocument.execute(document)
             return RenderedPage(
-                html: template.page(title: document.title, body: rendered.html),
+                html: template.page(title: document.title, body: rendered.html, features: rendered.features),
                 outline: TableOfContents.entries(from: rendered.headings)
             )
         }.value

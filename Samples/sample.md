@@ -73,6 +73,51 @@ Plain fenced block without a language.
 
     Indented code block.
 
+## Math
+
+Inline math like $E = mc^2$ and $\{x \in \mathbb{R} \mid x^2 < 2\}$ renders with KaTeX,
+while prose dollars stay untouched: it costs $5 and $10. Code is never rendered: `$HOME$`.
+
+Display math with `$$`:
+
+$$
+\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}
+$$
+
+A matrix (backslashes survive Markdown parsing):
+
+$$
+A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+$$
+
+A fenced `math` block:
+
+```math
+\sum_{k=1}^{n} k = \frac{n(n+1)}{2}
+```
+
+## Diagrams
+
+```mermaid
+flowchart LR
+    A[Markdown file] --> B(swift-markdown)
+    B --> C{Math or diagrams?}
+    C -->|yes| D[KaTeX / Mermaid]
+    C -->|no| E[Plain HTML]
+    D --> F[WKWebView]
+    E --> F
+```
+
+```mermaid
+sequenceDiagram
+    participant Editor
+    participant Watcher as FileWatcher
+    participant Viewer
+    Editor->>Watcher: save (atomic rename)
+    Watcher->>Viewer: change (debounced)
+    Viewer->>Viewer: re-render, keep scroll
+```
+
 ## HTML passthrough
 
 <details>

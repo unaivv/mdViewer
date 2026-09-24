@@ -26,6 +26,11 @@ targets:
       - path: MdViewer
         excludes:
           - Resources/Info.plist
+          - Resources/Web
+      # Copied as a folder so relative paths (e.g. KaTeX fonts) keep working.
+      - path: MdViewer/Resources/Web
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: swift-markdown
         product: Markdown
