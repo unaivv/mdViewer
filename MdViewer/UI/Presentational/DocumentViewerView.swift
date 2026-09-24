@@ -1,4 +1,5 @@
 import SwiftUI
+import MdViewerCore
 
 /// Presentational view: outline sidebar + (optional find bar and) rendered page.
 struct DocumentViewerView: View {

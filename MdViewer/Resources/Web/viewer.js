@@ -17,7 +17,7 @@
 
   function highlightCode() {
     if (!window.hljs) { return; }
-    document.querySelectorAll('pre code').forEach(function (block) {
+    document.querySelectorAll('pre code[class*="language-"]').forEach(function (block) {
       window.hljs.highlightElement(block);
     });
   }

@@ -1,4 +1,5 @@
 import SwiftUI
+import MdViewerCore
 
 /// Container: owns the viewer state (rendered page, outline, live reload, find) and
 /// wires use cases to the presentational views.

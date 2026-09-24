@@ -1,5 +1,5 @@
 import Testing
-@testable import MdViewer
+@testable import MdViewerCore
 
 @Suite("MathPreprocessor")
 struct MathPreprocessorTests {

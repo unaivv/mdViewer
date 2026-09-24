@@ -21,6 +21,8 @@ code, light/dark mode) in a `WKWebView`. There is no editor.
   dark variants; applied live to every window
 - Zoom: ⌘+ / ⌘- / ⌘0, persisted
 - Export as PDF… (⇧⌘E, paginated using the page setup's paper size) and Print… (⌘P)
+- Quick Look: press Space on a Markdown file in Finder for a fully rendered preview
+  (highlighting, math and diagrams included; GitHub theme following light/dark mode)
 
 KaTeX and Mermaid are bundled and only loaded for documents that use them.
 
@@ -36,19 +38,26 @@ KaTeX and Mermaid are bundled and only loaded for documents that use them.
 
 ## Architecture
 
+Three targets: the `MdViewer` app, the `MdViewerQuickLook` preview extension (embedded in
+the app) and the `MdViewerCore` framework they share. The framework holds Domain,
+Application, Ports, Adapters and the web assets, so both targets use one copy of the
+rendering code and of the ~4 MB of JavaScript and fonts.
+
 ```
 MdViewer/
-  App/          Composition root
-  Domain/       MarkdownDocument, Heading, RenderedDocument, Slugifier, TableOfContents,
-                ReaderTheme, PageZoom
+  App/          Composition root (app target)
+  Domain/       (MdViewerCore) MarkdownDocument, Heading, RenderedDocument, Slugifier,
+                TableOfContents, ReaderTheme, PageZoom
   Application/  RenderDocument and WatchDocument use cases
   Ports/        MarkdownRenderer, FileWatcher, DocumentReader protocols
-  Adapters/     SwiftMarkdownRenderer, HTMLPageTemplate, MarkdownFile (FileDocument),
-                DispatchSourceFileWatcher, FileSystemDocumentReader, MathPreprocessor,
-                PageSettingsScript, WebResourceLocator
-  UI/           Containers, Presentational views, Commands, Web (web view, scheme handler,
-                printing)
-  Resources/    Info.plist, assets, Web/ (CSS themes, viewer.js, highlight.js, KaTeX, Mermaid)
+  Adapters/     SwiftMarkdownRenderer, HTMLPageTemplate, DispatchSourceFileWatcher,
+                FileSystemDocumentReader, MathPreprocessor, PageSettingsScript,
+                WebResourceLocator, BundleResourceSchemeHandler
+  UI/           (app target) Document (MarkdownFile), Containers, Presentational views,
+                Commands, Web (web view, printing)
+  Resources/    Info.plist, assets (app); Web/ (MdViewerCore: CSS themes, viewer.js,
+                highlight.js, KaTeX, Mermaid)
+MdViewerQuickLook/  Quick Look preview extension (view-based, WKWebView)
 MdViewerTests/  Swift Testing tests
 Samples/        sample.md exercising every feature
 ```
@@ -79,7 +88,43 @@ Open `Samples/sample.md` with the built app to see every feature.
   not its folder). Re-enabling it will require security-scoped folder access.
 - The app is registered as a `Viewer` with `Alternate` handler rank, so it will not
   take over `.md` files from your editor.
-- Signing is ad-hoc (`CODE_SIGN_IDENTITY = "-"`).
+- **Signing**: Debug builds are signed with the local "Apple Development" identity (team
+  `736592UQPM` in `project.yml`), because pluginkit only loads the Quick Look extension
+  with a real team signature. Without that certificate, build with
+  `CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=` (the app works; the extension will not load).
+- **Quick Look**: the extension registers when the app is launched once. It is sandboxed
+  (`app-sandbox`, `files.user-selected.read-only`, and `network.client`, which WebKit's
+  web content process needs even for local pages; nothing is fetched from the network).
+  Relative images next to the file do not load in the preview, since the sandbox only
+  grants access to the previewed file. Check registration with
+  `pluginkit -mAvvv -p com.apple.quicklook.preview | grep -i mdviewer` and try it with
+  `qlmanage -p Samples/sample.md`.
 - Debug builds honor `MDVIEWER_SCROLL_TO=<heading-slug>` and `MDVIEWER_EXPORT_PDF=<path>`
   environment variables for scripted checks, e.g.
   `open -a MdViewer.app --env MDVIEWER_EXPORT_PDF=/tmp/out.pdf Samples/sample.md`.
+
+## Distribution
+
+`scripts/release.sh` archives a Release build, exports it with Developer ID, notarizes
+and staples it, and writes `build/MdViewer-<version>.zip` and `build/MdViewer-<version>.dmg`
+(the dmg is signed, notarized and stapled too).
+
+Requirements:
+
+- A paid [Apple Developer Program](https://developer.apple.com/programs/) membership.
+- A **Developer ID Application** certificate in the login keychain (Xcode > Settings >
+  Accounts > Manage Certificates). The script stops right away if none is found.
+- A notarytool keychain profile, created once:
+
+  ```sh
+  xcrun notarytool store-credentials MdViewerNotary \
+    --apple-id you@example.com --team-id TEAMID --password <app-specific-password>
+  ```
+
+Then:
+
+```sh
+NOTARY_PROFILE=MdViewerNotary ./scripts/release.sh
+```
+
+`TEAM_ID` can be set to override the team taken from the Developer ID certificate.

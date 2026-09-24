@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import WebKit
+import MdViewerCore
 
 /// Debug-only hooks for scripted verification, driven by environment variables:
 /// - `MDVIEWER_SCROLL_TO=<slug>`: after the first page load, jump to that heading.

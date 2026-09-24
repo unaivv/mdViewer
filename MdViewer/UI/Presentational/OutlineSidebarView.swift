@@ -1,4 +1,5 @@
 import SwiftUI
+import MdViewerCore
 
 /// Presentational view: the document outline, indented by heading level.
 struct OutlineSidebarView: View {

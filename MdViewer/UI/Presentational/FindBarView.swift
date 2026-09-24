@@ -1,4 +1,5 @@
 import SwiftUI
+import MdViewerCore
 
 /// Result of the last find operation, as shown in the find bar.
 enum FindStatus: Equatable {

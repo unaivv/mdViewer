@@ -69,7 +69,7 @@ private struct HTMLVisitor: MarkupVisitor {
     mutating func visitHeading(_ heading: Markdown.Heading) {
         let text = restored(heading.plainText)
         let slug = slugifier.uniqueSlug(for: text)
-        headings.append(MdViewer.Heading(level: heading.level, text: text, slug: slug))
+        headings.append(MdViewerCore.Heading(level: heading.level, text: text, slug: slug))
         let tag = "h\(heading.level)"
         html += "<\(tag) id=\"\(HTMLEscaping.attribute(slug))\">"
         visitChildren(of: heading)

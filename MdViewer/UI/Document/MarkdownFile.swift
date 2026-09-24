@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import MdViewerCore
 
 extension UTType {
     /// The de-facto Markdown type, imported in Info.plist.

@@ -1,4 +1,5 @@
 import SwiftUI
+import MdViewerCore
 
 /// View menu: reader theme picker and page zoom. Both persist and apply to every window.
 struct ViewCommands: Commands {

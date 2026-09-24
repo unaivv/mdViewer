@@ -1,5 +1,5 @@
 import Testing
-@testable import MdViewer
+@testable import MdViewerCore
 
 @Suite("RenderDocument use case")
 struct RenderDocumentTests {

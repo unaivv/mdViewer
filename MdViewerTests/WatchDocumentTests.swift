@@ -1,7 +1,7 @@
 import Foundation
 import Synchronization
 import Testing
-@testable import MdViewer
+@testable import MdViewerCore
 
 @Suite("WatchDocument use case")
 struct WatchDocumentTests {

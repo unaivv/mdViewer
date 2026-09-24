@@ -12,8 +12,13 @@ public struct WebResourceLocator: Sendable {
         self.root = root.standardizedFileURL
     }
 
-    /// The locator for the app bundle's `Web` resources folder.
-    public static func bundled(in bundle: Bundle = .main) -> WebResourceLocator {
+    /// The locator for the `Web` resources folder shipped inside the MdViewerCore framework.
+    public static func bundled() -> WebResourceLocator {
+        bundled(in: Bundle(for: BundleToken.self))
+    }
+
+    /// The locator for the `Web` folder inside `bundle`'s resources.
+    public static func bundled(in bundle: Bundle) -> WebResourceLocator {
         WebResourceLocator(root: (bundle.resourceURL ?? bundle.bundleURL).appending(path: "Web", directoryHint: .isDirectory))
     }
 
@@ -45,3 +50,6 @@ public struct WebResourceLocator: Sendable {
         return UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
     }
 }
+
+/// Anchor class used to locate this framework's bundle.
+private final class BundleToken {}

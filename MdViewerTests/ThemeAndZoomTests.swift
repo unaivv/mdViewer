@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MdViewer
+@testable import MdViewerCore
 
 @Suite("Themes")
 struct ThemeTests {

@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import WebKit
+import MdViewerCore
 
 /// Imperative handle to the web view, owned by a container, for actions that are not
 /// state (scrolling to a heading, find).

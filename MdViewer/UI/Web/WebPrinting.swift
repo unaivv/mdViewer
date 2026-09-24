@@ -1,5 +1,6 @@
 import AppKit
 import WebKit
+import MdViewerCore
 
 /// Printing and paginated PDF export for a `WKWebView`, via `NSPrintOperation`.
 @MainActor

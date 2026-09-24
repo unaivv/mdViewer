@@ -13,20 +13,27 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     MACOSX_DEPLOYMENT_TARGET: "15.0"
-    CODE_SIGN_IDENTITY: "-"
+    # Development signing with the local "Apple Development" identity: pluginkit only loads
+    # the Quick Look extension when it carries a real team signature. On a machine without
+    # it, override with CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= (the extension will not load).
+    # Release builds are re-signed with Developer ID by scripts/release.sh.
+    CODE_SIGN_IDENTITY: "Apple Development"
     CODE_SIGN_STYLE: Manual
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: 736592UQPM
+    ENABLE_HARDENED_RUNTIME: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     DEAD_CODE_STRIPPING: YES
 targets:
-  MdViewer:
-    type: application
+  # Domain, Application, Ports and Adapters plus the web assets, shared by the app and
+  # the Quick Look extension (one copy, embedded in the app's Frameworks folder).
+  MdViewerCore:
+    type: framework
     platform: macOS
     sources:
-      - path: MdViewer
-        excludes:
-          - Resources/Info.plist
-          - Resources/Web
+      - path: MdViewer/Domain
+      - path: MdViewer/Application
+      - path: MdViewer/Ports
+      - path: MdViewer/Adapters
       # Copied as a folder so relative paths (e.g. KaTeX fonts) keep working.
       - path: MdViewer/Resources/Web
         type: folder
@@ -34,6 +41,27 @@ targets:
     dependencies:
       - package: swift-markdown
         product: Markdown
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.unaividal.MdViewerCore
+        PRODUCT_NAME: MdViewerCore
+        GENERATE_INFOPLIST_FILE: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        DEFINES_MODULE: YES
+  MdViewer:
+    type: application
+    platform: macOS
+    sources:
+      - path: MdViewer/App
+      - path: MdViewer/UI
+      - path: MdViewer/Resources
+        excludes:
+          - Info.plist
+          - Web
+    dependencies:
+      - target: MdViewerCore
+      - target: MdViewerQuickLook
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.unaividal.MdViewer
@@ -47,9 +75,35 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        # Phase 1: App Sandbox disabled so WebKit can read images next to the document.
+        # App Sandbox disabled so WebKit can read images next to the document.
         ENABLE_APP_SANDBOX: NO
-        ENABLE_HARDENED_RUNTIME: YES
+  MdViewerQuickLook:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: MdViewerQuickLook
+        excludes:
+          - Info.plist
+          - MdViewerQuickLook.entitlements
+    dependencies:
+      - target: MdViewerCore
+        embed: false
+      - sdk: Quartz.framework
+      - sdk: WebKit.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.unaividal.MdViewer.QuickLook
+        PRODUCT_NAME: MdViewerQuickLook
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: MdViewerQuickLook/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: MdViewer Quick Look
+        CODE_SIGN_ENTITLEMENTS: MdViewerQuickLook/MdViewerQuickLook.entitlements
+        ENABLE_APP_SANDBOX: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        # Load MdViewerCore from the containing app's Frameworks folder.
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks @executable_path/../../../../Frameworks"
   MdViewerTests:
     type: bundle.unit-test
     platform: macOS
@@ -57,6 +111,8 @@ targets:
       - path: MdViewerTests
     dependencies:
       - target: MdViewer
+      - target: MdViewerCore
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.unaividal.MdViewerTests

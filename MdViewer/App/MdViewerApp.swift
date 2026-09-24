@@ -1,4 +1,5 @@
 import SwiftUI
+import MdViewerCore
 
 /// Composition root: wires adapters into the use cases and the UI.
 @main

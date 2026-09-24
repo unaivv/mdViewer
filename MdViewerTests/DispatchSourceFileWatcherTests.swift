@@ -1,7 +1,7 @@
 import Foundation
 import Synchronization
 import Testing
-@testable import MdViewer
+@testable import MdViewerCore
 
 /// Integration tests against the real file system. Serialized to keep timing predictable.
 @Suite("DispatchSourceFileWatcher", .serialized)

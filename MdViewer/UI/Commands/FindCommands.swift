@@ -1,4 +1,5 @@
 import SwiftUI
+import MdViewerCore
 
 /// Find actions published by the focused document window.
 struct FindActions {

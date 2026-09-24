@@ -1,4 +1,5 @@
 import SwiftUI
+import MdViewerCore
 
 /// Export/print actions published by the focused document window.
 struct DocumentOutputActions {
